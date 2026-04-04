@@ -51,7 +51,16 @@ class MineSweeper:
         self.cell_containers: list[list[ft.Container]] = []
 
         self._build_ui()
+        self.reset()
+
+    def reset(self):
+        """Скидання гри та створення нового поля"""
+        self.board_size, self.mines_count = LEVELS[self.level]
+
         self._build_grid()
+        self._set_mines()
+        self._calc_mines_around()
+
         self.page.update()
 
     def _build_ui(self):
@@ -92,6 +101,41 @@ class MineSweeper:
             self.cells.append(row_cells)
             self.cell_containers.append(row_containers)
             self.grid_column.controls.append(row)
+
+    def _get_all_cells(self):
+        """Генератор всіх клітинок поля"""
+        for x in range(self.board_size):
+            for y in range(self.board_size):
+                yield x, y, self.cells[x][y]
+
+    def _get_neighbors(self, x: int, y: int):
+        """Отримати список сусідніх клітинок (до 8 штук)"""
+        result = []
+        for xi in range(max(0, x - 1), min(x + 2, self.board_size)):
+            for yi in range(max(0, y - 1), min(y + 2, self.board_size)):
+                if xi != x or yi != y:
+                    result.append((xi, yi, self.cells[xi][yi]))
+        return result
+
+    def _set_mines(self):
+        """Випадкове розміщення мін на полі"""
+        positions = set()
+        while len(positions) < self.mines_count:
+            x = random.randint(0, self.board_size - 1)
+            y = random.randint(0, self.board_size - 1)
+            if (x, y) not in positions:
+                self.cells[x][y].is_mine = True
+                # self.cell_containers[x][y].content = ft.Text("💣")
+                positions.add((x, y))
+
+    def _calc_mines_around(self):
+        """Обчислення кількості мін навколо кожної клітинки"""
+        for x, y, cell in self._get_all_cells():
+            if not cell.is_mine:
+                cell.mines_around = sum(
+                    1 for _, _, c in self._get_neighbors(x, y) if c.is_mine
+                )
+                # self.cell_containers[x][y].content = ft.Text(str(cell.mines_around))
 
 
 def main(page: ft.Page):
