@@ -128,6 +128,18 @@ class MineSweeper:
                 )
                 # self.cell_containers[x][y].content = ft.Text(str(cell.mines_around))
 
+    def _expand_reveal(self, x: int, y: int):
+        """Рокриття порожніх клітинок методом заливки (BFS)"""
+        queue = [(x, y)]
+        while queue:
+            cx, cy = queue.pop(0)
+            for xi, yi, cell in self._get_neighbors(cx, cy):
+                if not cell.is_mine and not cell.is_flagged and not cell.is_revealed:
+                    cell.is_revealed = True
+                    self._update_cell_ui(cell)
+                    if cell.mines_around == 0:
+                        queue.append((xi, yi))
+
     def _get_all_cells(self):
         """Генератор всіх клітинок поля"""
         for x in range(self.board_size):
@@ -158,6 +170,14 @@ class MineSweeper:
         cell.is_revealed = True
         self._update_cell_ui(cell)
 
+        if cell.is_mine:
+            cell.is_end = True
+            self._update_cell_ui(cell)
+            return
+
+        if cell.mines_around == 0:
+            self._expand_reveal(cell.x, cell.y)
+
     def _set_mines(self):
         """Випадкове розміщення мін на полі"""
         positions = set()
@@ -174,7 +194,10 @@ class MineSweeper:
         container = self.cell_containers[cell.x][cell.y]
 
         if cell.is_revealed:
-            if cell.is_mine:
+            if cell.is_end:
+                container.bgcolor = ft.Colors.RED_400
+                container.content = ft.Text("💣", size=14)
+            elif cell.is_mine:
                 container.bgcolor = ft.Colors.GREY_300
                 container.content = ft.Text("💣", size=14)
             elif cell.mines_around > 0:
