@@ -15,6 +15,18 @@ STATUS_PLAY = 1
 STATUS_FAILED = 2
 STATUS_SUCCESS = 3
 
+# Кольори цифр (кількість мін навколо клітинки)
+NUM_COLORS = {
+    1: ft.Colors.BLUE,
+    2: ft.Colors.GREEN_800,
+    3: ft.Colors.RED,
+    4: ft.Colors.INDIGO,
+    5: ft.Colors.BROWN_700,
+    6: ft.Colors.TEAL,
+    7: ft.Colors.BLACK,
+    8: ft.Colors.GREY_600,
+}
+
 CELL_SIZE = 30
 
 
@@ -95,12 +107,26 @@ class MineSweeper:
                     alignment=ft.Alignment.CENTER,
                 )
 
+                gesture = ft.GestureDetector(
+                    content=container,
+                    on_tap=lambda e, cx=x, cy=y: self._on_cell_tap(cx, cy),
+                )
+
                 row_containers.append(container)
-                row.controls.append(container)
+                row.controls.append(gesture)
 
             self.cells.append(row_cells)
             self.cell_containers.append(row_containers)
             self.grid_column.controls.append(row)
+
+    def _calc_mines_around(self):
+        """Обчислення кількості мін навколо кожної клітинки"""
+        for x, y, cell in self._get_all_cells():
+            if not cell.is_mine:
+                cell.mines_around = sum(
+                    1 for _, _, c in self._get_neighbors(x, y) if c.is_mine
+                )
+                # self.cell_containers[x][y].content = ft.Text(str(cell.mines_around))
 
     def _get_all_cells(self):
         """Генератор всіх клітинок поля"""
@@ -117,6 +143,21 @@ class MineSweeper:
                     result.append((xi, yi, self.cells[xi][yi]))
         return result
 
+    def _on_cell_tap(self, x: int, y: int):
+        """Обробка лівого кліку по клітинці"""
+        cell = self.cells[x][y]
+        if not cell.is_revealed:
+            self._reveal_cell(cell)
+        self.page.update()
+
+    def _reveal_cell(self, cell: Cell):
+        """Розкриття однієї клітинки"""
+        if cell.is_revealed or cell.is_flagged:
+            return
+
+        cell.is_revealed = True
+        self._update_cell_ui(cell)
+
     def _set_mines(self):
         """Випадкове розміщення мін на полі"""
         positions = set()
@@ -128,14 +169,28 @@ class MineSweeper:
                 # self.cell_containers[x][y].content = ft.Text("💣")
                 positions.add((x, y))
 
-    def _calc_mines_around(self):
-        """Обчислення кількості мін навколо кожної клітинки"""
-        for x, y, cell in self._get_all_cells():
-            if not cell.is_mine:
-                cell.mines_around = sum(
-                    1 for _, _, c in self._get_neighbors(x, y) if c.is_mine
+    def _update_cell_ui(self, cell: Cell):
+        """Оновлення відображення клітинки"""
+        container = self.cell_containers[cell.x][cell.y]
+
+        if cell.is_revealed:
+            if cell.is_mine:
+                container.bgcolor = ft.Colors.GREY_300
+                container.content = ft.Text("💣", size=14)
+            elif cell.mines_around > 0:
+                container.bgcolor = ft.Colors.GREY_200
+                container.content = ft.Text(
+                    str(cell.mines_around),
+                    size=16,
+                    weight=ft.FontWeight.BOLD,
+                    color=NUM_COLORS.get(cell.mines_around, ft.Colors.BLACK),
                 )
-                # self.cell_containers[x][y].content = ft.Text(str(cell.mines_around))
+            else:
+                container.bgcolor = ft.Colors.GREY_200
+                container.content = None
+        else:
+            container.bgcolor = ft.Colors.BLUE_GREY_300
+            container.content = None
 
 
 def main(page: ft.Page):
