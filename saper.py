@@ -230,6 +230,22 @@ class MineSweeper:
             self._update_status(STATUS_SUCCESS)
             self.timer_running = False
 
+    def _collect_chord_cells(self, x, y, to_reveal, visited):
+        """Рекурсивний збір клітинок для chord-розкриття."""
+        base_cell = self.cells[x][y]
+        flagged_count = sum(int(c.is_flagged) for _, _, c in self._get_neighbors(x, y))
+        if flagged_count == base_cell.mines_around and base_cell.mines_around > 0:
+            for xi, yi, cell in self._get_neighbors(x, y):
+                if (
+                    not cell.is_flagged
+                    and not cell.is_revealed
+                    and (xi, yi) not in visited
+                ):
+                    visited.add((xi, yi))
+                    to_reveal.append((xi, yi, cell))
+                    if not cell.is_mine:
+                        self._collect_chord_cells(xi, yi, to_reveal, visited)
+
     def _expand_reveal(self, x: int, y: int):
         """Рокриття порожніх клітинок методом заливки (BFS)"""
         queue = [(x, y)]
@@ -263,6 +279,14 @@ class MineSweeper:
                     result.append((xi, yi, self.cells[xi][yi]))
         return result
 
+    def _handle_chord(self, x: int, y: int):
+        """Розкриття сусідів при правильній кількості прапорців."""
+        to_reveal = []
+        visited = set()
+        self._collect_chord_cells(x, y, to_reveal, visited)
+        for _, _, cell in to_reveal:
+            self._reveal_cell(cell)
+
     def _on_cell_secondary(self, x: int, y: int):
         """Обробка правого кліку / довгого натискання."""
         if self.status in (STATUS_FAILED, STATUS_SUCCESS):
@@ -277,6 +301,8 @@ class MineSweeper:
             self.remaining_mines += -1 if cell.is_flagged else 1
             self.mines_label.value = f"{self.remaining_mines:03d}"
             self._update_cell_ui(cell)
+        else:
+            self._handle_chord(x, y)
 
         self._check_win()
         self.page.update()
@@ -292,6 +318,8 @@ class MineSweeper:
         cell = self.cells[x][y]
         if not cell.is_revealed:
             self._reveal_cell(cell)
+        else:
+            self._handle_chord(x, y)
 
         self._check_win()
         self.page.update()
