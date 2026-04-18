@@ -231,7 +231,7 @@ class MineSweeper:
             return
 
         if self.status == STATUS_READY:
-            self._update_status(STATUS_PLAY)
+            self._start_game()
 
         cell = self.cells[x][y]
         if not cell.is_revealed:
@@ -248,7 +248,7 @@ class MineSweeper:
             return
 
         if self.status == STATUS_READY:
-            self._update_status(STATUS_PLAY)
+            self._start_game()
 
         cell = self.cells[x][y]
         if not cell.is_revealed:
@@ -260,6 +260,7 @@ class MineSweeper:
         if self.status == STATUS_PLAY:
             # Під час гри: здатись
             self._update_status(STATUS_FAILED)
+            self.timer_running = False
             self._reveal_grid()
             self.page.update()
         elif self.status in (STATUS_FAILED, STATUS_SUCCESS):
@@ -299,6 +300,23 @@ class MineSweeper:
                 self.cells[x][y].is_mine = True
                 # self.cell_containers[x][y].content = ft.Text("💣")
                 positions.add((x, y))
+
+    def _start_game(self):
+        """Початок гри: запуск таймера"""
+        self._update_status(STATUS_PLAY)
+        self.timer_start = int(time.time())
+        self.timer_running = True
+        self.page.run_task(self._timer_tick)
+
+    async def _timer_tick(self):
+        """Оновлення таймера кожну секунду"""
+        import asyncio
+
+        while self.timer_running and self.status == STATUS_PLAY:
+            n_seconds = int(time.time()) - self.timer_start
+            self.timer_label.value = f"{n_seconds:03d}"
+            self.page.update()
+            await asyncio.sleep(1)
 
     def _update_cell_ui(self, cell: Cell):
         """Оновлення відображення клітинки"""
