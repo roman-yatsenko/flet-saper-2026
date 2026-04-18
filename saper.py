@@ -1,3 +1,5 @@
+from tkinter import CENTER
+
 import flet as ft
 import random
 import time
@@ -92,6 +94,7 @@ class MineSweeper:
         self._build_grid()
         self._set_mines()
         self._calc_mines_around()
+        self._set_start()
 
         self.page.update()
 
@@ -128,6 +131,17 @@ class MineSweeper:
             font_family="Consolas",
         )
 
+        self.level_dropdown = ft.Dropdown(
+            width=200,
+            value="0",
+            options=[
+                ft.dropdown.Option("0", "Легкий 8x8"),
+                ft.dropdown.Option("1", "Середній 16x16"),
+                ft.dropdown.Option("2", "Складний 24x24"),
+            ],
+            on_select=self._on_level_change,
+        )
+
         toolbar = ft.Row(
             [
                 ft.Text("💣", size=24),
@@ -141,11 +155,16 @@ class MineSweeper:
             vertical_alignment=ft.CrossAxisAlignment.CENTER,
         )
 
+        level_row = ft.Row(
+            [self.level_dropdown],
+            alignment=ft.MainAxisAlignment.CENTER,
+        )
+
         self.grid_column = ft.Column(
             spacing=1,
             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
         )
-        self.page.add(toolbar, self.grid_column)
+        self.page.add(toolbar, level_row, self.grid_column)
 
     def _build_grid(self):
         """Побудова ігрового поля"""
@@ -324,6 +343,11 @@ class MineSweeper:
         self._check_win()
         self.page.update()
 
+    def _on_level_change(self, e):
+        """Обробка зміни рівня складності."""
+        self.level = int(e.control.value)
+        self.reset()
+
     def _on_status_button_click(self, e):
         """Обробка кліку по кнопці статусу."""
         if self.status == STATUS_PLAY:
@@ -371,6 +395,29 @@ class MineSweeper:
                 # self.cell_containers[x][y].content = ft.Text("💣")
                 positions.add((x, y))
 
+    def _set_start(self):
+        """Вибір стартової клітинки та розкриття її околу."""
+        empty_cells = [
+            cell
+            for x, y, cell in self._get_all_cells()
+            if (
+                not cell.is_mine
+                and cell.mines_around == 0
+                and (
+                    x == 0
+                    or y == 0
+                    or x == self.board_size - 1
+                    or y == self.board_size - 1
+                )
+            )
+        ]
+        if not empty_cells:
+            return
+
+        start_cell = random.choice(empty_cells)
+        start_cell.is_start = True
+        self._reveal_cell(start_cell)
+
     def _start_game(self):
         """Початок гри: запуск таймера"""
         self._update_status(STATUS_PLAY)
@@ -399,6 +446,9 @@ class MineSweeper:
             elif cell.is_mine:
                 container.bgcolor = ft.Colors.GREY_300
                 container.content = ft.Text("💣", size=14)
+            elif cell.is_start:
+                container.bgcolor = ft.Colors.GREY_200
+                container.content = ft.Text("🚀", size=14)
             elif cell.mines_around > 0:
                 container.bgcolor = ft.Colors.GREY_200
                 container.content = ft.Text(
