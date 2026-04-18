@@ -174,6 +174,12 @@ class MineSweeper:
                 gesture = ft.GestureDetector(
                     content=container,
                     on_tap=lambda e, cx=x, cy=y: self._on_cell_tap(cx, cy),
+                    on_secondary_tap=lambda e, cx=x, cy=y: self._on_cell_secondary(
+                        cx, cy
+                    ),
+                    on_long_press_start=lambda e, cx=x, cy=y: self._on_cell_secondary(
+                        cx, cy
+                    ),
                 )
 
                 row_containers.append(container)
@@ -218,6 +224,23 @@ class MineSweeper:
                 if xi != x or yi != y:
                     result.append((xi, yi, self.cells[xi][yi]))
         return result
+
+    def _on_cell_secondary(self, x: int, y: int):
+        """Обробка правого кліку / довгого натискання."""
+        if self.status in (STATUS_FAILED, STATUS_SUCCESS):
+            return
+
+        if self.status == STATUS_READY:
+            self._update_status(STATUS_PLAY)
+
+        cell = self.cells[x][y]
+        if not cell.is_revealed:
+            cell.is_flagged = not cell.is_flagged
+            self.remaining_mines += -1 if cell.is_flagged else 1
+            self.mines_label.value = f"{self.remaining_mines:03d}"
+            self._update_cell_ui(cell)
+
+        self.page.update()
 
     def _on_cell_tap(self, x: int, y: int):
         """Обробка лівого кліку по клітинці"""
@@ -299,6 +322,9 @@ class MineSweeper:
             else:
                 container.bgcolor = ft.Colors.GREY_200
                 container.content = None
+        elif cell.is_flagged:
+            container.bgcolor = ft.Colors.BLUE_GREY_300
+            container.content = ft.Text("🚩", size=14)
         else:
             container.bgcolor = ft.Colors.BLUE_GREY_300
             container.content = None
