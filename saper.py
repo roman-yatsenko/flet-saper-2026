@@ -72,6 +72,8 @@ class MineSweeper:
         self.status = STATUS_READY
         self.timer_start = 0
         self.timer_running = False
+        self.games_played = 0
+        self.games_won = 0
 
         self.cells: list[list[Cell]] = []
         self.cell_containers: list[list[ft.Container]] = []
@@ -174,7 +176,9 @@ class MineSweeper:
             spacing=1,
             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
         )
-        self.page.add(toolbar, level_row, self.grid_column)
+        self.stats_label = ft.Text("Ігор: 0  Перемог: 0%", size=14)
+
+        self.page.add(toolbar, level_row, self.grid_column, self.stats_label)
 
     def _build_grid(self):
         """Побудова ігрового поля"""
@@ -489,6 +493,12 @@ class MineSweeper:
     def _update_status(self, status: int):
         """Оновлення статусу гри."""
         self.status = status
+        if status in (STATUS_FAILED, STATUS_SUCCESS):
+            self.games_played += 1
+            if status == STATUS_SUCCESS:
+                self.games_won += 1
+            win_rate = int(self.games_won / self.games_played * 100)
+            self.stats_label.value = f"Ігор: {self.games_played}  Перемог: {win_rate}%"
         self.status_emoji.value = STATUS_EMOJIS[status]
 
 
