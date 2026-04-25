@@ -112,9 +112,9 @@ class MineSweeper:
         self.status_emoji.value = STATUS_EMOJIS[STATUS_READY]
 
         self._build_grid()
-        self._set_mines()
-        self._calc_mines_around()
-        self._set_start()
+        # self._set_mines()
+        # self._calc_mines_around()
+        # self._set_start()
 
         self.page.update()
 
@@ -391,10 +391,15 @@ class MineSweeper:
         if self.is_paused or self.status in (STATUS_FAILED, STATUS_SUCCESS):
             return
 
-        if self.status == STATUS_READY:
-            self._start_game()
-
         cell = self.cells[x][y]
+        if self.status == STATUS_READY:
+            self._set_mines(exclude_x=x, exclude_y=y)
+            self._calc_mines_around()
+            cell.is_start = True
+            self._reveal_cell(cell)
+            self._start_game()
+            return
+
         if not cell.is_revealed:
             self._reveal_cell(cell)
         else:
@@ -470,13 +475,19 @@ class MineSweeper:
         with open(OPTIONS_FILE, "w") as f:
             json.dump(self.options, f)
 
-    def _set_mines(self):
+    def _set_mines(self, exclude_x: int = -1, exclude_y: int = -1):
         """Випадкове розміщення мін на полі"""
+        excluded = set()
+        if exclude_x >= 0:
+            excluded.add((exclude_x, exclude_y))
+            for nx, ny, _ in self._get_neighbors(exclude_x, exclude_y):
+                excluded.add((nx, ny))
+
         positions = set()
         while len(positions) < self.mines_count:
             x = random.randint(0, self.board_size - 1)
             y = random.randint(0, self.board_size - 1)
-            if (x, y) not in positions:
+            if (x, y) not in (excluded | positions):
                 self.cells[x][y].is_mine = True
                 # self.cell_containers[x][y].content = ft.Text("💣")
                 positions.add((x, y))
