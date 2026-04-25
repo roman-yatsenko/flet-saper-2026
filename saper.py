@@ -56,6 +56,7 @@ class Cell:
         self.is_mine = False
         self.is_revealed = False
         self.is_flagged = False
+        self.is_questioned = False
         self.is_start = False
         self.is_end = False
         self.mines_around = 0
@@ -361,8 +362,15 @@ class MineSweeper:
 
         cell = self.cells[x][y]
         if not cell.is_revealed:
-            cell.is_flagged = not cell.is_flagged
-            self.remaining_mines += -1 if cell.is_flagged else 1
+            if cell.is_questioned:
+                cell.is_questioned = False  # знак питання -> звичайна
+            elif cell.is_flagged:
+                cell.is_flagged = False
+                cell.is_questioned = True  # прапорець -> знак питання
+                self.remaining_mines += 1
+            else:
+                cell.is_flagged = True  # звичайна -> прапорець
+                self.remaining_mines -= 1
             self.mines_label.value = f"{self.remaining_mines:03d}"
             self._update_cell_ui(cell)
         else:
@@ -418,7 +426,7 @@ class MineSweeper:
 
     def _reveal_cell(self, cell: Cell):
         """Розкриття однієї клітинки"""
-        if cell.is_revealed or cell.is_flagged:
+        if cell.is_revealed or cell.is_flagged or cell.is_questioned:
             return
 
         cell.is_revealed = True
@@ -523,6 +531,9 @@ class MineSweeper:
         elif cell.is_flagged:
             container.bgcolor = ft.Colors.BLUE_GREY_300
             container.content = ft.Text("🚩", size=14)
+        elif cell.is_questioned:
+            container.bgcolor = ft.Colors.AMBER_100
+            container.content = ft.Text("❓", size=14)
         else:
             container.bgcolor = ft.Colors.BLUE_GREY_300
             container.content = None
