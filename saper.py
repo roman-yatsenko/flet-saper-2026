@@ -142,6 +142,15 @@ class MineSweeper:
             on_select=self._on_level_change,
         )
 
+        if self.page.theme_mode == ft.ThemeMode.DARK:
+            icon = ft.Icons.LIGHT_MODE
+        else:
+            icon = ft.Icons.DARK_MODE
+        self.theme_button = ft.IconButton(
+            icon=icon,
+            on_click=self._on_theme_toggle,
+        )
+
         toolbar = ft.Row(
             [
                 ft.Text("💣", size=24),
@@ -151,6 +160,7 @@ class MineSweeper:
                 ft.Container(expand=True),
                 self.timer_label,
                 ft.Text("⏱️", size=24),
+                self.theme_button,
             ],
             vertical_alignment=ft.CrossAxisAlignment.CENTER,
         )
@@ -359,6 +369,15 @@ class MineSweeper:
         elif self.status in (STATUS_FAILED, STATUS_SUCCESS):
             # Після завершення гри: нова гра
             self.reset()
+
+    def _on_theme_toggle(self, e):
+        if self.page.theme_mode == ft.ThemeMode.DARK:
+            self.page.theme_mode = ft.ThemeMode.LIGHT
+            self.theme_button.icon = ft.Icons.DARK_MODE
+        else:
+            self.page.theme_mode = ft.ThemeMode.DARK
+            self.theme_button.icon = ft.Icons.LIGHT_MODE
+        self.page.update()
 
     def _reveal_cell(self, cell: Cell):
         """Розкриття однієї клітинки"""
