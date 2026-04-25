@@ -1,8 +1,12 @@
 from tkinter import CENTER
 
 import flet as ft
+import json
+import os
 import random
 import time
+
+OPTIONS_FILE = "data.json"
 
 # Рівні складності: (розмір поля, кількість мін)
 LEVELS = (
@@ -61,10 +65,18 @@ class MineSweeper:
     """Головний клас застосунку Сапер"""
 
     def __init__(self, page: ft.Page):
+        self.options = self._load_options()
+
         self.page = page
         self.page.title = "Сапер"
         self.page.padding = 10
         self.page.scroll = ft.ScrollMode.AUTO
+
+        theme_option = self.options.get("theme", "LIGHT")
+        if "DARK" in theme_option:
+            self.page.theme_mode = ft.ThemeMode.DARK
+        else:
+            self.page.theme_mode = ft.ThemeMode.LIGHT
 
         self.level = 0
         self.board_size, self.mines_count = LEVELS[self.level]
@@ -91,6 +103,10 @@ class MineSweeper:
 
         self.mines_label.value = f"{self.remaining_mines:03d}"
         self.timer_label.value = "000"
+        if record := self.options[str(self.level)]:
+            self.record_label.value = f"{record:03d}"
+        else:
+            self.record_label.value = "---"
         self.status_emoji.value = STATUS_EMOJIS[STATUS_READY]
 
         self._build_grid()
@@ -132,6 +148,13 @@ class MineSweeper:
             color=ft.Colors.RED_700,
             font_family="Consolas",
         )
+        self.record_label = ft.Text(
+            "---",
+            size=28,
+            weight=ft.FontWeight.BOLD,
+            color=ft.Colors.RED_700,
+            font_family="Consolas",
+        )
 
         self.level_dropdown = ft.Dropdown(
             width=200,
@@ -162,6 +185,8 @@ class MineSweeper:
                 ft.Container(expand=True),
                 self.timer_label,
                 ft.Text("⏱️", size=24),
+                self.record_label,
+                ft.Text("🏆", size=24),
                 self.theme_button,
             ],
             vertical_alignment=ft.CrossAxisAlignment.CENTER,
@@ -320,6 +345,12 @@ class MineSweeper:
         for _, _, cell in to_reveal:
             self._reveal_cell(cell)
 
+    def _load_options(self) -> dict:
+        if os.path.exists(OPTIONS_FILE):
+            with open(OPTIONS_FILE) as f:
+                return json.load(f)
+        return {"0": None, "1": None, "2": None}
+
     def _on_cell_secondary(self, x: int, y: int):
         """Обробка правого кліку / довгого натискання."""
         if self.status in (STATUS_FAILED, STATUS_SUCCESS):
@@ -381,6 +412,8 @@ class MineSweeper:
         else:
             self.page.theme_mode = ft.ThemeMode.DARK
             self.theme_button.icon = ft.Icons.LIGHT_MODE
+        self.options["theme"] = str(self.page.theme_mode)
+        self._save_options()
         self.page.update()
 
     def _reveal_cell(self, cell: Cell):
@@ -406,6 +439,10 @@ class MineSweeper:
             if not (cell.is_flagged and cell.is_mine):
                 cell.is_revealed = True
                 self._update_cell_ui(cell)
+
+    def _save_options(self):
+        with open(OPTIONS_FILE, "w") as f:
+            json.dump(self.options, f)
 
     def _set_mines(self):
         """Випадкове розміщення мін на полі"""
@@ -497,6 +534,12 @@ class MineSweeper:
             self.games_played += 1
             if status == STATUS_SUCCESS:
                 self.games_won += 1
+                record = self.options[str(self.level)]
+                score = int(time.time()) - self.timer_start
+                if not record or record > score:
+                    self.page.show_dialog(ft.SnackBar(content=ft.Text("Новий рекорд!")))
+                    self.options[str(self.level)] = score
+                    self._save_options()
             win_rate = int(self.games_won / self.games_played * 100)
             self.stats_label.value = f"Ігор: {self.games_played}  Перемог: {win_rate}%"
         self.status_emoji.value = STATUS_EMOJIS[status]
