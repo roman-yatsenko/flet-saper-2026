@@ -87,6 +87,7 @@ class MineSweeper:
         self.timer_running = False
         self.games_played = 0
         self.games_won = 0
+        self.is_paused = False
 
         self.cells: list[list[Cell]] = []
         self.cell_containers: list[list[ft.Container]] = []
@@ -140,6 +141,11 @@ class MineSweeper:
             bgcolor=ft.Colors.BLUE_GREY_100,
             on_click=self._on_status_button_click,
         )
+        self.pause_button = ft.IconButton(
+            icon=ft.Icons.PAUSE,
+            on_click=self._on_pause_click,
+            disabled=True,  # активна тільки під час гри
+        )
 
         # Таймер
         self.timer_label = ft.Text(
@@ -183,6 +189,7 @@ class MineSweeper:
                 self.mines_label,
                 ft.Container(expand=True),
                 self.status_button,
+                self.pause_button,
                 ft.Container(expand=True),
                 self.timer_label,
                 ft.Text("⏱️", size=24),
@@ -354,7 +361,7 @@ class MineSweeper:
 
     def _on_cell_secondary(self, x: int, y: int):
         """Обробка правого кліку / довгого натискання."""
-        if self.status in (STATUS_FAILED, STATUS_SUCCESS):
+        if self.is_paused or self.status in (STATUS_FAILED, STATUS_SUCCESS):
             return
 
         if self.status == STATUS_READY:
@@ -381,7 +388,7 @@ class MineSweeper:
 
     def _on_cell_tap(self, x: int, y: int):
         """Обробка лівого кліку по клітинці"""
-        if self.status in (STATUS_FAILED, STATUS_SUCCESS):
+        if self.is_paused or self.status in (STATUS_FAILED, STATUS_SUCCESS):
             return
 
         if self.status == STATUS_READY:
@@ -400,6 +407,17 @@ class MineSweeper:
         """Обробка зміни рівня складності."""
         self.level = int(e.control.value)
         self.reset()
+
+    def _on_pause_click(self, e):
+        if self.status != STATUS_PLAY:
+            return
+        self.is_paused = not self.is_paused
+        self.pause_button.icon = (
+            ft.Icons.PLAY_ARROW if self.is_paused else ft.Icons.PAUSE
+        )
+        for _, _, cell in self._get_all_cells():
+            self._update_cell_ui(cell)
+        self.page.update()
 
     def _on_status_button_click(self, e):
         """Обробка кліку по кнопці статусу."""
@@ -507,6 +525,11 @@ class MineSweeper:
         """Оновлення відображення клітинки"""
         container = self.cell_containers[cell.x][cell.y]
 
+        if self.is_paused:
+            container.bgcolor = ft.Colors.BLUE_GREY_300
+            container.content = None
+            return
+
         if cell.is_revealed:
             if cell.is_end:
                 container.bgcolor = ft.Colors.RED_400
@@ -553,6 +576,10 @@ class MineSweeper:
                     self._save_options()
             win_rate = int(self.games_won / self.games_played * 100)
             self.stats_label.value = f"Ігор: {self.games_played}  Перемог: {win_rate}%"
+        if status in (STATUS_FAILED, STATUS_SUCCESS, STATUS_READY):
+            self.pause_button.disabled = True
+        if status == STATUS_PLAY:
+            self.pause_button.disabled = False
         self.status_emoji.value = STATUS_EMOJIS[status]
 
 
